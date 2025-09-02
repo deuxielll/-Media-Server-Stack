@@ -1,0 +1,128 @@
+version: "3.9"
+
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: media_qbittorrent
+    restart: unless-stopped
+    ports:
+      - "${QBITTORRENT_PORT}:8080"
+      - "${QBITTORRENT_DHT_PORT}:6881"
+      - "${QBITTORRENT_DHT_PORT}:6881/udp"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    volumes:
+      - ./data/config/qbittorrent:/config
+      - ./data/downloads:/downloads
+    networks:
+      - media-net
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: media_prowlarr
+    restart: unless-stopped
+    ports:
+      - "${PROWLARR_PORT}:9696"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./data/config/prowlarr:/config
+    depends_on:
+      - flaresolverr
+    networks:
+      - media-net
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: media_flaresolverr
+    restart: unless-stopped
+    ports:
+      - "${FLARESOLVERR_PORT}:8191"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    networks:
+      - media-net
+
+  jellyseerr:
+    container_name: media_jellyseerr
+    image: fallenbagel/jellyseerr:latest
+    restart: unless-stopped
+    ports:
+      - "${JELLYSEERR_PORT}:5055"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./data/config/jellyseerr:/app/config
+      - ./data/movies:/data/movies
+      - ./data/tvshows:/data/tvshows
+    networks:
+      - media-net
+    depends_on:
+      - jellyfin
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: media_jellyfin
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./data/config/jellyfin:/config
+      - ./data/cache/jellyfin:/cache
+      - ./data/movies:/media/movies:ro
+      - ./data/tvshows:/media/tvshows:ro
+    ports:
+      - "${JELLYFIN_HTTP_PORT}:8096"
+      - "${JELLYFIN_HTTPS_PORT}:8920"
+    networks:
+      - media-net
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: media_radarr
+    restart: unless-stopped
+    ports:
+      - "${RADARR_PORT}:7878"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./data/config/radarr:/config
+      - ./data/movies:/movies
+      - ./data/downloads:/downloads
+    networks:
+      - media-net
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: media_sonarr
+    restart: unless-stopped
+    ports:
+      - "${SONARR_PORT}:8989"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./data/config/sonarr:/config
+      - ./data/tvshows:/tv
+      - ./data/downloads:/downloads
+    networks:
+      - media-net
+
+networks:
+  media-net:
+    name: media-net
+    driver: bridge
